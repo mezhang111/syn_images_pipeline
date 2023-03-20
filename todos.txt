@@ -1,0 +1,21 @@
+1. add object to scene with key attribute "category_id"("name" optionally)
+2. try with config files in coco_annotations (lighting sampling, camera samplings, etc.)
+
+
+
+
+Baseline: Given an object, randomly manipulate it, then past to random background (advantage: ez, disadvantage: no shadow, no interaction with the background, etc.)
+
+1. Find several chair.obj/ply
+2. (use random_background script in example) write script to add chais to scenes randomly, annotate, output as temp_scenes.py. This produces coco annotation
+
+
+'python examples/advanced/random_backgrounds/paste_images_on_backgrounds.py --images examples/advanced/random_backgrounds/output/coco_data/images --backgrounds example_img --overwrite'
+
+
+---------------------------------------------------------------------------------------------------------------------------
+
+1. write scripts: read .blend files from a folder, randomly select a subset of those objects, 
+   randomly set locations, rotations, material, lighting, rgb, etc., check if camera can still see at least of of the objects,
+   render and store in images. 
+   Read backgrounds from another folder, paste objects to that background. The background can be randomly cropped/rotated/flipped etc (can also be done in augmentation)

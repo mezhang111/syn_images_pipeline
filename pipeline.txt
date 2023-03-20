@@ -1,0 +1,6 @@
+pipeline:
+
+- blenderproc run random_backgrounds/generate_images.py
+- python random_backgrounds/paste_images_on_backgrounds.py
+- python random_backgrounds/to_bbox_annotations.py
+- python random_backgrounds/upload_download_roboflow.py
