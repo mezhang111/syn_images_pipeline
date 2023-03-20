@@ -16,5 +16,5 @@ annotations = coco['annotations']
 for annotation in annotations:
     annotation.pop('segmentation', None)
 
-with open(os.path.join(args.output, 'coco_annotations.json'), 'a+') as outfile:
+with open(os.path.join(args.output, 'coco_annotations.json'), 'w+') as outfile:
     json.dump(coco, outfile)
