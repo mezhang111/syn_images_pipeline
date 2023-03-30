@@ -1,5 +1,6 @@
 import blenderproc as bproc
 import sys
+
 sys.path.append('./')
 from omegaconf import OmegaConf
 import utils
@@ -7,9 +8,10 @@ from pathlib import Path
 import os
 import numpy as np
 
-import pydevd_pycharm
 
-pydevd_pycharm.settrace('localhost', port=12345, stdoutToServer=True, stderrToServer=True)
+# import pydevd_pycharm
+
+# pydevd_pycharm.settrace('localhost', port=12345, stdoutToServer=True, stderrToServer=True)
 
 
 # material_sample, object random location, object random rotation,
@@ -21,29 +23,45 @@ def _get_random_range(flags, random_ranges, fix_points):
     return res
 
 
-def generate_sample_pose_fn(config):
+def generate_sample_pose_fn(config, surface=None):
     location_cfg = config.location.random
     [range_min, range_max] = _get_xyz_range(location_cfg, [[-3, 3]] * 3, [[-8, -8], [0, 0], [0, 0]])
 
     def sample_pose(_obj: bproc.types.MeshObject):
-        _obj.set_location(np.random.uniform(range_min, range_max))
+        if surface is None:
+            _obj.set_location(np.random.uniform(range_min, range_max))
+        else:
+            _obj.set_location(bproc.sampler.upper_region(
+                objects_to_sample_on=[surface],
+                min_height=1,
+                max_height=3,
+                use_ray_trace_check=False
+            ))
         _obj.set_rotation_euler(
             bproc.sampler.uniformSO3(config.rotation.random.x, config.rotation.random.y, config.rotation.random.z))
 
     return sample_pose
 
 
-def sample_camera(_poi, config):
+def sample_camera(_poi, config, surface=None):
     location_cfg = config.location.random
     [elevation, azimuth] = _get_random_range([location_cfg.elevation, location_cfg.azimuth], [[-45, 45], [-90, 90]],
                                              [[25, 25.1], [0, 0.01]])
-    location = bproc.sampler.shell(center=[0, 0, 0],
-                                   radius_min=3,
-                                   radius_max=5,
-                                   elevation_min=elevation[0],
-                                   elevation_max=elevation[1],
-                                   azimuth_min=azimuth[0],
-                                   azimuth_max=azimuth[1])
+    if surface is None:
+        location = bproc.sampler.shell(center=[0, 0, 0],
+                                       radius_min=3,
+                                       radius_max=5,
+                                       elevation_min=elevation[0],
+                                       elevation_max=elevation[1],
+                                       azimuth_min=azimuth[0],
+                                       azimuth_max=azimuth[1])
+    else:
+        location = bproc.sampler.upper_region(
+            objects_to_sample_on=[surface],
+            min_height=1,
+            max_height=3,
+            use_ray_trace_check=False
+        )
     look_at_cfg = config.look_at.random
     range_min, range_max = _get_xyz_range(look_at_cfg, [[-1, 1]] * 3, [[0, 0]] * 3)
     lookat_point = _poi + np.random.uniform(range_min, range_max)
@@ -63,11 +81,17 @@ def _get_xyz_range(cfg, random_ranges, fix_points):
     return range_min, range_max
 
 
-
-
-
 def main():
-    args = utils.get_default_parser().parse_args()
+    parser = utils.get_default_parser()
+    parser.add_argument("--surface", type=str, default=None, help="Path to surface blend")
+    args = parser.parse_args()
+    if args.surface is not None:
+        surface = bproc.loader.load_blend(str(args.surface))
+        utils.scale_obj(surface, args.average_object_per_image * 3)
+        surface.hide()
+
+    else:
+        surface = None
     config = OmegaConf.load(args.config)
     os.makedirs(args.output_dir, exist_ok=True)
     bproc.init()
@@ -75,20 +99,14 @@ def main():
     # load the objects into the scene
     objs = utils.load_objs(args.object)
     # set class and name for coco annotations, Make the object actively participate in the physics simulation\
-    for obj in objs:
-        obj.set_cp("category_id", 1)
-        obj.set_name("chair")
-        obj.enable_rigidbody(active=True, collision_shape="COMPOUND")
-        bbox_vol = obj.get_bound_box_volume()
-        factor = bbox_vol ** (-1. / 3.)
-        obj_scale = obj.get_scale()
-        obj.set_scale(obj_scale * factor)
+    utils.preprocess_and_scale_objs(objs)
     # Create a new light
     light = bproc.types.Light()
     light.set_type("POINT")
     # Enable transparency so the background becomes transparent
     bproc.renderer.set_output_format(enable_transparency=True)
-    bproc.renderer.enable_segmentation_output(map_by=["category_id", "instance", "name"])
+    bproc.renderer.enable_segmentation_output(map_by=["category_id", "instance", "name"],
+                                              default_values={"category_id": None, "name": None, "instance": None})
     materials = bproc.material.collect_all()
     paths = list(Path(args.texture).absolute().rglob("*.jpg"))
     paths += list(Path(args.texture).absolute().rglob("*.png"))
@@ -97,12 +115,13 @@ def main():
     bproc.material.create_material_from_texture("/home/mengtao/experiments/assets/texture/chair-cora-nat-n.jpg",
                                                 base_material)
     utils.check_material(base_material, materials)
+    p_select = min((args.average_object_per_image * 1.3) / len(objs), 1.)
     for r in range(config.num_pose):
         # Clear all key frames from the previous run
         bproc.utility.reset_keyframes()
         # randomly select a subset of objects
-        p = [0.9 , 0.1]
-        selected_objs = utils.random_select_obj(objs, p)
+
+        selected_objs = utils.random_select_obj(objs, p_select=p_select, p_not_select=max(0., 1. - p_select))
         if len(selected_objs) > 0:
             utils.random_material_texture_infusion(materials, selected_objs, texture)
             # sample light
@@ -113,7 +132,7 @@ def main():
             # Sample the poses of all shapenet objects above the ground without any collisions in-between
             bproc.object.sample_poses(
                 selected_objs,
-                sample_pose_func=generate_sample_pose_fn(config.object),
+                sample_pose_func=generate_sample_pose_fn(config.object, surface=surface),
                 objects_to_check_collisions=[],
                 max_tries=5
             )
@@ -127,7 +146,7 @@ def main():
             max_cameras = config.num_camera
             n_cameras = 0
             while n_tries < max_tries and n_cameras < max_cameras:
-                cam2world_matrix = sample_camera(poi, config.camera)
+                cam2world_matrix = sample_camera(poi, config.camera, surface=surface)
                 if not set(selected_objs).isdisjoint(bproc.camera.visible_objects(cam2world_matrix)):
                     bproc.camera.add_camera_pose(cam2world_matrix)
                     n_cameras += 1
@@ -148,7 +167,6 @@ def main():
                                                 instance_attribute_maps=data["instance_attribute_maps"],
                                                 colors=data["colors"],
                                                 append_to_existing_output=True)
-
 
 
 if __name__ == '__main__':

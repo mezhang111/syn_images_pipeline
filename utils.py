@@ -5,6 +5,7 @@ import random
 import numpy as np
 import argparse
 
+
 def load_objs(path):
     objs = []
     path = Path(path)
@@ -129,8 +130,8 @@ def check_material(base_material, materials):
             mat.update_blender_ref(base_material)
 
 
-def random_select_obj(objs, p):
-    mask = np.random.choice(a=[False, True], size=(len(objs),), p=p)
+def random_select_obj(objs, p_select, p_not_select):
+    mask = np.random.choice(a=[False, True], size=(len(objs),), p=[p_not_select, p_select])
     selected_objs = [objs[i] for i in range(len(objs)) if mask[i]]
     for i in range(len(objs)):
         if mask[i]:
@@ -140,6 +141,7 @@ def random_select_obj(objs, p):
             objs[i].deselect()
             objs[i].hide(True)
     return selected_objs
+
 
 def get_default_parser():
     parser = argparse.ArgumentParser()
@@ -151,5 +153,26 @@ def get_default_parser():
                         help="Path to the texture folder.")
     parser.add_argument('--output_dir', nargs='?', default="random_backgrounds/output_test",
                         help="Path to where the final files, will be saved")
+    parser.add_argument('--average_object_per_image', default=3, type=int,
+                        help="average number of objects per image")
     parser.add_argument('--config', type=str, help="path to config file")
     return parser
+
+
+def preprocess_and_scale_objs(objs, category_id=1, name="chair", bbox_size=1):
+    for obj in objs:
+        set_label(category_id, name, obj)
+        scale_obj(obj, bbox_size)
+
+
+def scale_obj(obj, bbox_size):
+    bbox_vol = obj.get_bound_box_volume()
+    factor = bbox_size*(bbox_vol ** (-1. / 3.))
+    obj_scale = obj.get_scale()
+    obj.set_scale(obj_scale * factor)
+
+
+def set_label(category_id, name, obj):
+    obj.set_cp("category_id", category_id)
+    obj.set_name(name)
+    obj.enable_rigidbody(active=True, collision_shape="COMPOUND")
