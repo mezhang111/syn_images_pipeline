@@ -1,0 +1,30 @@
+num_pose: 10
+num_camera: 2
+sample_material: false
+sample_light: true
+simulate_physics: false
+object:
+  location:
+    random:
+      x: true
+      y: true
+      z: true
+  rotation:
+    random:
+      x: false
+      y: false
+      z: true
+camera:
+  location:
+    random:
+      elevation: true
+      azimuth: true
+  look_at:
+    random:
+      x: true
+      y: true
+      z: true
+  in_plane_rotation:
+    random: false
+
+

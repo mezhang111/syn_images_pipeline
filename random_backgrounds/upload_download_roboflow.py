@@ -10,7 +10,7 @@ from PIL import Image
 MY_KEY = "W389caWDMxj3pEuYdHuv"
 parser = argparse.ArgumentParser()
 parser.add_argument('--project', type=str, required=True, help='name of the project in roboflow workspace')
-parser.add_argument('--folder', type=str, default='random_backgrounds/images_with_backgrounds/coco_data',
+parser.add_argument('--folder', type=str, default='random_backgrounds/chairs_no_rotation_with_background/coco_data',
                     help='Path to coco folder')
 parser.add_argument('--create', action='store_true',
                     help='create new project')
@@ -42,7 +42,7 @@ for filename in os.listdir(image_folder):
         except (
                 requests.exceptions.RequestException,
                 requests.exceptions.JSONDecodeError) as e:  # buffer for later retry
-            print("warning!" + e)
+            print("warning!" + str(e))
             buffers.append([image_path, annotation_path, split])
             continue
 

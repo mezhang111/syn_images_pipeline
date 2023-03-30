@@ -5,9 +5,9 @@ import os
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--output', default="random_backgrounds/images_with_backgrounds_test/coco_data",
+parser.add_argument('--output', default="random_backgrounds/chairs_no_rotation_with_background/coco_data",
                     help="Path to where the final files will be saved")
-parser.add_argument("--file", default='random_backgrounds/output_test/coco_data/coco_annotations.json',
+parser.add_argument("--file", default='random_backgrounds/chairs_no_random_rotation/coco_data/coco_annotations.json',
                     type=str, help="Path to the coco file")
 args = parser.parse_args()
 with open(args.file) as json_file:

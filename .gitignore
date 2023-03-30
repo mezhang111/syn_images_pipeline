@@ -1,6 +1,13 @@
 random_backgrounds/output/
 random_backgrounds/images_with_backgrounds/
 random_backgrounds/backgrounds/
+random_backgrounds/chairs/
+random_backgrounds/chairs_with_white_background/
+random_backgrounds/white_background
 assets/
 .idea/
+pycharm-2022.3.3/
+*.DS_Store
+*.pycache
+
 

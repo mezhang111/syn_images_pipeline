@@ -16,7 +16,7 @@ python random_backgrounds/to_bbox_annotations.py --file "${syntethic_image_folde
 
 project="$7"
 # if no, don't upload the data
-if ["$project" != "no"]; then
+if [ "$project" != "no" ]; then
   create="$8"
   download_folder="$9"
   split_train="${10}"
@@ -29,3 +29,4 @@ if ["$project" != "no"]; then
   fi
 
   eval "$cmd"
+fi

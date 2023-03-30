@@ -12,7 +12,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-i",
                         "--images",
-                        default='random_backgrounds/output_test/coco_data/images',
+                        default='random_backgrounds/chairs_no_random_rotation/coco_data/images',
                         type=str,
                         help="Path to object images to paste.")
     parser.add_argument("-b",
@@ -29,7 +29,7 @@ def main():
     parser.add_argument(
         "--output",
         "-o",
-        default="random_backgrounds/images_with_backgrounds_test/coco_data",
+        default="random_backgrounds/chairs_no_rotation_with_background/coco_data",
         type=str,
         help=
         "Merges images and backgrounds, overwriting original files. Default: False."
@@ -42,7 +42,6 @@ def main():
     os.makedirs(image_folder, exist_ok=True)
 
     # Go through all files in given `images` directory
-    counter = 0
     for file_name in os.listdir(args.images):
         # Matching files to given `types` and opening images
         if file_name.lower().endswith(args.types):
