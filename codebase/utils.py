@@ -8,6 +8,7 @@ import argparse
 
 def load_objs(path):
     objs = []
+    names = []
     path = Path(path)
     for f in path.iterdir():
         if f.is_file():
@@ -29,8 +30,11 @@ def load_objs(path):
                 # for obj in mesh_objs[1:]:
                 #    obj.deselect()
                 #    obj.delete()
+            if not mesh_objs[0].has_materials():
+                mesh_objs[0].new_material("dummy material")
             objs.append(mesh_objs[0])
-    return objs
+            names.append(Path(f).stem)
+    return objs, names
 
 
 def convert_entity_to_mesh(entity):
@@ -47,11 +51,12 @@ def convert_entity_to_mesh(entity):
 def sample_material(selected_objs):
     for obj in selected_objs:
         if len(obj.get_materials()) > 0:
-            mat = obj.get_materials()[0]
-            mat.set_principled_shader_value("Specular", random.uniform(0, 1))
-            mat.set_principled_shader_value("Roughness", random.uniform(0, 1))
-            mat.set_principled_shader_value("Base Color", np.random.uniform([0, 0, 0, 1], [1, 1, 1, 1]))
-            mat.set_principled_shader_value("Metallic", random.uniform(0, 1))
+            if np.random.uniform(0, 1) <= 0.2:
+                mat = obj.get_materials()[0]
+                mat.set_principled_shader_value("Specular", random.uniform(0, 1))
+                mat.set_principled_shader_value("Roughness", random.uniform(0, 1))
+                mat.set_principled_shader_value("Base Color", np.random.uniform([0, 0, 0, 1], [1, 1, 1, 1]))
+                mat.set_principled_shader_value("Metallic", random.uniform(0, 1))
 
 
 def _get_random_range(flags, random_ranges, fix_points):
@@ -62,7 +67,7 @@ def _get_random_range(flags, random_ranges, fix_points):
 
 def generate_sample_pose_fn(config):
     location_cfg = config.location.random
-    [range_min, range_max] = _get_xyz_range(location_cfg, [[-3, 3]] * 3, [[-8, -8], [0, 0], [0, 0]])
+    [range_min, range_max] = get_xyz_range(location_cfg, [[-3, 3]] * 3, [[-8, -8], [0, 0], [0, 0]])
 
     def sample_pose(_obj: bproc.types.MeshObject):
         _obj.set_location(np.random.uniform(range_min, range_max))
@@ -90,7 +95,7 @@ def sample_camera(_poi, config):
                                    azimuth_min=azimuth[0],
                                    azimuth_max=azimuth[1])
     look_at_cfg = config.look_at.random
-    range_min, range_max = _get_xyz_range(look_at_cfg, [[-1, 1]] * 3, [[0, 0]] * 3)
+    range_min, range_max = get_xyz_range(look_at_cfg, [[-1, 1]] * 3, [[0, 0]] * 3)
     lookat_point = _poi + np.random.uniform(range_min, range_max)
     rotation_matrix = bproc.camera.rotation_from_forward_vec(lookat_point - location,
                                                              inplane_rot=np.random.uniform(-0.7854, 0.7854)
@@ -100,7 +105,7 @@ def sample_camera(_poi, config):
     return cam2world_matrix
 
 
-def _get_xyz_range(cfg, random_ranges, fix_points):
+def get_xyz_range(cfg, random_ranges, fix_points):
     [range_x, range_y, range_z] = _get_random_range([cfg.x, cfg.y, cfg.z], random_ranges,
                                                     fix_points)
     range_min = [range_x[0], range_y[0], range_z[0]]
@@ -130,11 +135,17 @@ def check_material(base_material, materials):
             mat.update_blender_ref(base_material)
 
 
-def random_select_obj(objs, p_select, p_not_select):
+def random_select_obj(objs, p_select, p_not_select, max_objs):
+    if len(objs) == 0:
+        return []
     mask = np.random.choice(a=[False, True], size=(len(objs),), p=[p_not_select, p_select])
     selected_objs = [objs[i] for i in range(len(objs)) if mask[i]]
+    selected_indexes = [i for i in range(len(objs)) if mask[i]]
+    random.shuffle(selected_objs)
+    selected_objs = selected_objs[:min(len(selected_objs), max_objs)]
+    selected_indexes = selected_indexes[:min(len(selected_objs), max_objs)]
     for i in range(len(objs)):
-        if mask[i]:
+        if i in selected_indexes:
             objs[i].select()
             objs[i].hide(False)
         else:
@@ -146,28 +157,31 @@ def random_select_obj(objs, p_select, p_not_select):
 def get_default_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--object', nargs='?',
-                        default="assets/chairs",
+                        default="../assets/bottles/bottle",
                         help="Path to the object folder.")
     parser.add_argument('--texture', nargs='?',
-                        default="assets/texture",
+                        default="../assets/bottles/texture",
                         help="Path to the texture folder.")
-    parser.add_argument('--output_dir', nargs='?', default="random_backgrounds/output_test",
+    parser.add_argument('--output_dir', nargs='?', default="../generated_dataset/output_bottle_with_cup",
+                        # default="random_backgrounds/output_test",
                         help="Path to where the final files, will be saved")
     parser.add_argument('--average_object_per_image', default=3, type=int,
                         help="average number of objects per image")
-    parser.add_argument('--config', type=str, help="path to config file")
+    parser.add_argument('--config', default="random_backgrounds/config.yaml", type=str, help="path to config file")
     return parser
 
 
-def preprocess_and_scale_objs(objs, category_id=1, name="chair", bbox_size=1):
-    for obj in objs:
-        set_label(category_id, name, obj)
+def preprocess_and_scale_objs(objs, objs_names, category_id=1, bbox_size=1):
+    for idx, obj in enumerate(objs):
+        set_label(category_id, objs_names[idx], obj)
+        # obj.set_local2world_mat(standard_mat)
+        # obj.set_rotation_euler(np.array([0., 0., 0.]))
         scale_obj(obj, bbox_size)
 
 
 def scale_obj(obj, bbox_size):
     bbox_vol = obj.get_bound_box_volume()
-    factor = bbox_size*(bbox_vol ** (-1. / 3.))
+    factor = bbox_size * (bbox_vol ** (-1. / 3.))
     obj_scale = obj.get_scale()
     obj.set_scale(obj_scale * factor)
 
@@ -176,3 +190,6 @@ def set_label(category_id, name, obj):
     obj.set_cp("category_id", category_id)
     obj.set_name(name)
     obj.enable_rigidbody(active=True, collision_shape="COMPOUND")
+
+
+

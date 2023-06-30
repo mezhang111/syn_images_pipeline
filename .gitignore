@@ -8,6 +8,8 @@ random_backgrounds/output_test
 assets/
 .idea/
 pycharm-2022.3.3/
+generated_dataset/
+__pycache__/
 *.DS_Store
 *.pycache
 

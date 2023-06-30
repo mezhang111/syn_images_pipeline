@@ -1,0 +1,31 @@
+num_pose: 3000
+num_camera: 1
+sample_material: true
+sample_light: true
+simulate_physics: false
+other_obj_size: 1.5
+object:
+  location:
+    random:
+      x: true
+      y: true
+      z: true
+  rotation:
+    random:
+      x: true
+      y: true
+      z: true
+camera:
+  location:
+    random:
+      elevation: true
+      azimuth: true
+  look_at:
+    random:
+      x: true
+      y: true
+      z: true
+  in_plane_rotation:
+    random: true
+
+

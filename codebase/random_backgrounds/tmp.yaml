@@ -1,8 +1,9 @@
-num_pose: 10
-num_camera: 2
+num_pose: 300
+num_camera: 1
 sample_material: false
 sample_light: true
 simulate_physics: false
+other_obj_size: 1.5
 object:
   location:
     random:
@@ -22,7 +23,7 @@ camera:
   look_at:
     random:
       x: true
-      y: true
+      y: false
       z: true
   in_plane_rotation:
     random: false
